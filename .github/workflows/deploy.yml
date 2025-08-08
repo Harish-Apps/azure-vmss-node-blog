@@ -16,7 +16,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Azure Login (Service Principal)
@@ -24,7 +24,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Redeploy on VMSS instances
+      - name: Update & restart app on all instances (self-heal)
         run: |
           az vmss list-instances -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_SCALE_SET" --query "[].instanceId" -o tsv | while read id; do
             echo "Updating instance $id"
@@ -34,11 +34,26 @@ jobs:
               --instance-id "$id" \
               --command-id RunShellScript \
               --scripts '
-                set -e
-                cd /var/www/blog/app
-                git fetch --all
-                git reset --hard origin/main
-                npm ci --omit=dev
+                set -euxo pipefail
+                ufw allow 3000/tcp || true
+                ufw allow 80/tcp || true
+                ufw --force enable || true
+
+                if ! command -v node >/dev/null 2>&1; then
+                  curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+                  apt-get update -y
+                  apt-get install -y nodejs
+                fi
+                if ! command -v pm2 >/dev/null 2>&1; then
+                  npm install -g pm2
+                fi
+
+                cd /var/www/blog/app || exit 0
+                git fetch --all || true
+                git reset --hard origin/main || true
+                npm ci --omit=dev || npm install
+
                 pm2 restart blog || pm2 start /var/www/blog/app/server.js --name blog
+                pm2 save || true
               '
           done
