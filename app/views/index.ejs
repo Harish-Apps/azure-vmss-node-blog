@@ -1,10 +1,28 @@
-<% layout('layout') %>
-<section class="posts">
-  <% posts.forEach(p => { %>
-    <article class="post">
-      <h2><%= p.title %></h2>
-      <small><%= p.date %></small>
-      <p><%= p.content %></p>
-    </article>
-  <% }) %>
-</section>
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= title %></title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <link href="/static/styles.css" rel="stylesheet"/>
+  </head>
+  <body>
+    <header>
+      <h1><%= title %></h1>
+    </header>
+    <main>
+      <section class="posts">
+        <% posts.forEach(p => { %>
+          <article class="post">
+            <h2><%= p.title %></h2>
+            <small><%= p.date %></small>
+            <p><%= p.content %></p>
+          </article>
+        <% }) %>
+      </section>
+    </main>
+    <footer>
+      <p>Deployed on Azure VMSS • <a href="/health">health</a></p>
+    </footer>
+  </body>
+</html>

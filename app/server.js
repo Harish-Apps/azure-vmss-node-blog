@@ -1,25 +1,26 @@
-const express = require("express");
-const path = require("path");
+const express = require('express');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 
-app.set("view engine", "ejs");
-app.set("views", path.join(__dirname, "views"));
-app.use("/static", express.static(path.join(__dirname, "public")));
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+app.use('/static', express.static(path.join(__dirname, 'public')));
 
-const BLOG_TITLE = process.env.BLOG_TITLE || "My Personal Blog";
+const BLOG_TITLE = process.env.BLOG_TITLE || 'My Personal Blog';
 const POSTS = [
-  { title: "Hello, World Bye 👋", date: "2025-08-08", content: "First post deployed on Azure VMSS!" },
-  { title: "Why VMSS?", date: "2025-08-08", content: "Auto scale, self-heal, and rolling updates made simple." }
+  { title: 'Hello, World 👋', date: '2025-08-08', content: 'First post deployed on Azure VMSS!' },
+  { title: 'Why VMSS?', date: '2025-08-08', content: 'Auto scale, self-heal, and rolling updates made simple.' }
 ];
 
-app.get("/", (req, res) => {
-  res.render("index", { title: BLOG_TITLE, posts: POSTS });
+app.get('/', (req, res) => {
+  res.render('index', { title: BLOG_TITLE, posts: POSTS });
 });
 
-app.get("/health", (req, res) => res.status(200).send("OK"));
+app.get('/health', (req, res) => res.status(200).send('OK'));
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Blog running on port ${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Blog running on http://${HOST}:${PORT}`);
 });

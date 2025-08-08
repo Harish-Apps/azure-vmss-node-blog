@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
 
+# Adjust these values to match your Terraform configuration
 env:
   AZURE_RESOURCE_GROUP: rg-node-blog
   AZURE_SCALE_SET: node-blog-vmss
@@ -16,17 +17,19 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Azure Login (Service Principal)
+      - name: Login to Azure (using AZURE_CREDENTIALS secret)
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Update & restart app on all instances (self-heal)
+      - name: Redeploy application on VMSS instances
         run: |
-          az vmss list-instances -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_SCALE_SET" --query "[].instanceId" -o tsv | while read id; do
+          set -euo pipefail
+          instance_ids=$(az vmss list-instances -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_SCALE_SET" --query "[].instanceId" -o tsv)
+          for id in $instance_ids; do
             echo "Updating instance $id"
             az vmss run-command invoke \
               -g "$AZURE_RESOURCE_GROUP" \
@@ -34,26 +37,33 @@ jobs:
               --instance-id "$id" \
               --command-id RunShellScript \
               --scripts '
-                set -euxo pipefail
-                ufw allow 3000/tcp || true
+                set -eu
+                ADMIN_USER="azureuser"
+                # Ensure UFW is enabled and ports 80/3000 are allowed
                 ufw allow 80/tcp || true
+                ufw allow 3000/tcp || true
                 ufw --force enable || true
-
+                # Install Node.js, Git and PM2 if missing
                 if ! command -v node >/dev/null 2>&1; then
                   curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
                   apt-get update -y
-                  apt-get install -y nodejs
+                  apt-get install -y nodejs git
                 fi
                 if ! command -v pm2 >/dev/null 2>&1; then
                   npm install -g pm2
                 fi
-
-                cd /var/www/blog/app || exit 0
-                git fetch --all || true
-                git reset --hard origin/main || true
-                npm ci --omit=dev || npm install
-
-                pm2 restart blog || pm2 start /var/www/blog/app/server.js --name blog
-                pm2 save || true
+                # Clone or update the app (replace <your-username> with your GitHub username)
+                APP_DIR=/var/www/blog/app
+                sudo -u $ADMIN_USER mkdir -p /var/www/blog
+                if [ ! -d "$APP_DIR/.git" ]; then
+                  sudo -u $ADMIN_USER git clone -b main https://github.com/<your-username>/azure-vmss-node-blog.git "$APP_DIR" || true
+                fi
+                cd "$APP_DIR"
+                sudo -u $ADMIN_USER git config --global --add safe.directory "$APP_DIR" || true
+                sudo -u $ADMIN_USER git fetch --all || true
+                sudo -u $ADMIN_USER git reset --hard origin/main || true
+                sudo -u $ADMIN_USER npm install --omit=dev
+                sudo -u $ADMIN_USER pm2 restart blog || sudo -u $ADMIN_USER pm2 start server.js --name blog
+                sudo -u $ADMIN_USER pm2 save || true
               '
           done
