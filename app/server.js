@@ -10,7 +10,7 @@ app.use("/static", express.static(path.join(__dirname, "public")));
 
 const BLOG_TITLE = process.env.BLOG_TITLE || "My Personal Blog";
 const POSTS = [
-  { title: "Hello, World 👋", date: "2025-08-08", content: "First post deployed on Azure VMSS!" },
+  { title: "Hello, World Bye 👋", date: "2025-08-08", content: "First post deployed on Azure VMSS!" },
   { title: "Why VMSS?", date: "2025-08-08", content: "Auto scale, self-heal, and rolling updates made simple." }
 ];
 
