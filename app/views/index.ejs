@@ -1,0 +1,10 @@
+<% layout('layout') %>
+<section class="posts">
+  <% posts.forEach(p => { %>
+    <article class="post">
+      <h2><%= p.title %></h2>
+      <small><%= p.date %></small>
+      <p><%= p.content %></p>
+    </article>
+  <% }) %>
+</section>

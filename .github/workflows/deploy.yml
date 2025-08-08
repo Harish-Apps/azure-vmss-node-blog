@@ -1,0 +1,44 @@
+name: Deploy to Azure VMSS
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  AZURE_RESOURCE_GROUP: rg-node-blog
+  AZURE_SCALE_SET: node-blog-vmss
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Azure Login (Service Principal)
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Redeploy on VMSS instances
+        run: |
+          az vmss list-instances -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_SCALE_SET" --query "[].instanceId" -o tsv | while read id; do
+            echo "Updating instance $id"
+            az vmss run-command invoke \
+              -g "$AZURE_RESOURCE_GROUP" \
+              -n "$AZURE_SCALE_SET" \
+              --instance-id "$id" \
+              --command-id RunShellScript \
+              --scripts '
+                set -e
+                cd /var/www/blog/app
+                git fetch --all
+                git reset --hard origin/main
+                npm ci --omit=dev
+                pm2 restart blog || pm2 start /var/www/blog/app/server.js --name blog
+              '
+          done
